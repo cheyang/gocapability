@@ -177,6 +177,6 @@ func showGivenCaps(process capability.Capabilities, caps []string) {
 	for _, v := range caps {
 		fmt.Printf("%s: %t\n",
 			v,
-			process.Get(allCapabilityTypes, capabilityMap[v]))
+			process.Get(capability.BOUNDS|capability.EFFECTIVE, capabilityMap[v]))
 	}
 }
