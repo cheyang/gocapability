@@ -393,6 +393,8 @@ func (c *capsV3) Load() (err error) {
 		status_path = fmt.Sprintf("/proc/%d/status", c.hdr.pid)
 	}
 
+	fmt.Println("load file: ", status_path)
+
 	f, err := os.Open(status_path)
 	if err != nil {
 		return

@@ -45,6 +45,8 @@ func main() {
 			fmt.Println(err.Error())
 			return
 		}
+
+		fmt.Printf("PID: %d\n", pid)
 	}
 
 	caps := strings.Split(capStr, ",")
@@ -81,12 +83,11 @@ func getPidFromContainer(name string) (pid int, err error) {
 	}
 
 	container, err := client.InspectContainer(name)
-
 	if err != nil {
 		return pid, err
 	}
-
-	if container.State.Pid == 0 {
+	pid = container.State.Pid
+	if pid == 0 {
 		return pid, fmt.Errorf("The container is not running!")
 	}
 
@@ -114,8 +115,11 @@ func addCaps(pid int, caps []string) error {
 		return err
 	}
 
-	fmt.Println(process.String())
-	fmt.Println(process.StringCap(allCapabilityTypes))
+	// fmt.Println(process.String())
+	// fmt.Println(process.StringCap(allCapabilityTypes))
+
+	// fmt.Println(process.Get(which, what))
+	showCapabilities(process)
 	// process.
 
 	// process.Clear(allCapabilityTypes)
@@ -142,4 +146,23 @@ func initCapMap() {
 	}
 
 	// fmt.Println(capabilityMap)
+}
+
+func showCapabilities(process capability.Capabilities) {
+
+	for k, v := range capabilityMap {
+
+		// fmt.Printf("%s: EFFECTIVE-%t,  PERMITTED-%t, INHERITABLE-%t\n",
+		// 	k,
+		// 	process.Get(capability.EFFECTIVE, v),
+		// 	process.Get(capability.PERMITTED, v),
+		// 	process.Get(capability.INHERITABLE, v))
+
+		//allCapabilityTypes
+
+		fmt.Printf("%s: %t\n",
+			k,
+			process.Get(allCapabilityTypes, v))
+
+	}
 }
