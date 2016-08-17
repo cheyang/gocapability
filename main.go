@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/cheyang/gocapability/capability"
@@ -66,7 +67,7 @@ func validate() error {
 	}
 
 	if pid == 0 && container == "" {
-		return fmt.Errorf("Please set one of the container name and pid.")
+		pid = os.Getpid()
 	}
 
 	if pid > 0 && container != "" {
