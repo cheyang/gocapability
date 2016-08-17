@@ -133,4 +133,6 @@ func initCapMap() {
 		capKey := fmt.Sprintf("CAP_%s", strings.ToUpper(cap.String()))
 		capabilityMap[capKey] = cap
 	}
+
+	fmt.Println(capabilityMap)
 }
