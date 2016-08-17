@@ -9,6 +9,7 @@ import (
 	docker "github.com/fsouza/go-dockerclient"
 )
 
+// const allCapabilityTypes = capability.EFFECTIVE | capability.BOUNDS | capability.PERMITTED
 const allCapabilityTypes = capability.CAPS | capability.BOUNDS
 
 var (
@@ -115,17 +116,14 @@ func addCaps(pid int, caps []string) error {
 		return err
 	}
 
-	// fmt.Println(process.String())
-	// fmt.Println(process.StringCap(allCapabilityTypes))
-
-	// fmt.Println(process.Get(which, what))
-	showCapabilities(process)
-	// process.
-
-	// process.Clear(allCapabilityTypes)
-	// process.Set(allCapabilityTypes, l)
-	// // pid.Set(which, ...)
-	// process.Apply(allCapabilityTypes)
+	showCapabilities(process, pid)
+	showGivenCaps(process, caps)
+	process.Set(allCapabilityTypes, l...)
+	err = process.Apply(allCapabilityTypes)
+	if err != nil {
+		return err
+	}
+	showGivenCaps(process, caps)
 
 	return nil
 }
@@ -148,7 +146,9 @@ func initCapMap() {
 	// fmt.Println(capabilityMap)
 }
 
-func showCapabilities(process capability.Capabilities) {
+func showCapabilities(process capability.Capabilities, pid int) {
+
+	fmt.Printf("Process %d was give capabilities:", pid)
 
 	for k, v := range capabilityMap {
 
@@ -162,7 +162,20 @@ func showCapabilities(process capability.Capabilities) {
 
 		fmt.Printf("%s: %t\n",
 			k,
-			process.Get(allCapabilityTypes, v))
+			process.Get(capability.BOUNDS, v))
+		// if process.Get(capability.BOUNDS, v) {
+		// 	fmt.Printf("%s ", k)
+		// }
+	}
 
+	fmt.Println("")
+}
+
+func showGivenCaps(process capability.Capabilities, caps []string) {
+
+	for _, v := range caps {
+		fmt.Printf("%s: %t\n",
+			v,
+			process.Get(allCapabilityTypes, capabilityMap[v]))
 	}
 }

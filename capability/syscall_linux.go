@@ -7,6 +7,8 @@
 package capability
 
 import (
+	"fmt"
+	"strconv"
 	"syscall"
 	"unsafe"
 )
@@ -31,9 +33,14 @@ func capget(hdr *capHeader, data *capData) (err error) {
 }
 
 func capset(hdr *capHeader, data *capData) (err error) {
+	fmt.Printf("data's effective: %s\n", strconv.FormatInt(int64(data.effective), 16))
+	fmt.Printf("data's permitted: %s\n", strconv.FormatInt(int64(data.permitted), 16))
+	fmt.Printf("data's inheritable: %s\n", strconv.FormatInt(int64(data.inheritable), 16))
+
 	_, _, e1 := syscall.Syscall(syscall.SYS_CAPSET, uintptr(unsafe.Pointer(hdr)), uintptr(unsafe.Pointer(data)), 0)
 	if e1 != 0 {
 		err = e1
+		fmt.Println("err: %v", err)
 	}
 	return
 }

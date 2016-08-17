@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -105,16 +106,19 @@ func newPid(pid int) (c Capabilities, err error) {
 		p.hdr.version = capVers
 		p.hdr.pid = pid
 		c = p
+		fmt.Println("linuxCapVer1")
 	case linuxCapVer2, linuxCapVer3:
 		p := new(capsV3)
 		p.hdr.version = capVers
 		p.hdr.pid = pid
 		c = p
+		fmt.Println("linuxCapVer2,3")
 	default:
 		err = errUnknownVers
 		return
 	}
 	err = c.Load()
+	fmt.Printf("capabities: %+v", c)
 	if err != nil {
 		c = nil
 	}
@@ -240,6 +244,20 @@ type capsV3 struct {
 	bounds [2]uint32
 }
 
+func (c *capsV3) print() {
+
+	for i, v := range c.data {
+		fmt.Printf("data [%d]'s effective: %s\n", i, strconv.FormatInt(int64(v.effective), 16))
+		fmt.Printf("data [%d]'s permitted: %s\n", i, strconv.FormatInt(int64(v.permitted), 16))
+		fmt.Printf("data [%d]'s inheritable: %s\n", i, strconv.FormatInt(int64(v.inheritable), 16))
+	}
+
+	for i, v := range c.bounds {
+		fmt.Printf("bound [%d]'s : %s\n", i, strconv.FormatInt(int64(v), 16))
+	}
+
+}
+
 func (c *capsV3) Get(which CapType, what Cap) bool {
 	var i uint
 	if what > 31 {
@@ -294,6 +312,7 @@ func (c *capsV3) Full(which CapType) bool {
 }
 
 func (c *capsV3) Set(which CapType, caps ...Cap) {
+	c.print()
 	for _, what := range caps {
 		var i uint
 		if what > 31 {
@@ -303,17 +322,22 @@ func (c *capsV3) Set(which CapType, caps ...Cap) {
 
 		if which&EFFECTIVE != 0 {
 			c.data[i].effective |= 1 << uint(what)
+			fmt.Println("c.data[i].effective |= 1 << uint(what)")
 		}
 		if which&PERMITTED != 0 {
 			c.data[i].permitted |= 1 << uint(what)
+			fmt.Println("c.data[i].permitted |= 1 << uint(what)")
 		}
 		if which&INHERITABLE != 0 {
 			c.data[i].inheritable |= 1 << uint(what)
+			fmt.Println("c.data[i].inheritable |= 1 << uint(what)")
 		}
 		if which&BOUNDING != 0 {
 			c.bounds[i] |= 1 << uint(what)
+			fmt.Println("c.bounds[i] |= 1 << uint(what)")
 		}
 	}
+	c.print()
 }
 
 func (c *capsV3) Unset(which CapType, caps ...Cap) {
@@ -380,6 +404,8 @@ func (c *capsV3) String() (ret string) {
 }
 
 func (c *capsV3) Load() (err error) {
+	// fmt.Printf("before loading, data: %+v", c.data)
+	c.print()
 	err = capget(&c.hdr, &c.data[0])
 	if err != nil {
 		return
@@ -393,7 +419,7 @@ func (c *capsV3) Load() (err error) {
 		status_path = fmt.Sprintf("/proc/%d/status", c.hdr.pid)
 	}
 
-	fmt.Println("load file: ", status_path)
+	// fmt.Println("load file: ", status_path)
 
 	f, err := os.Open(status_path)
 	if err != nil {
@@ -410,30 +436,57 @@ func (c *capsV3) Load() (err error) {
 		}
 		if strings.HasPrefix(line, "CapB") {
 			fmt.Sscanf(line[4:], "nd:  %08x%08x", &c.bounds[1], &c.bounds[0])
-			break
+			continue
+		}
+
+		if strings.HasPrefix(line, "CapE") {
+			fmt.Sscanf(line[4:], "ff:  %08x%08x", &c.data[1].effective, &c.data[0].effective)
+			continue
+		}
+
+		if strings.HasPrefix(line, "CapP") {
+			fmt.Sscanf(line[4:], "rm:  %08x%08x", &c.data[1].permitted, &c.data[0].permitted)
+			continue
+		}
+
+		if strings.HasPrefix(line, "CapI") {
+			fmt.Sscanf(line[4:], "nh:  %08x%08x", &c.data[1].inheritable, &c.data[0].inheritable)
+			continue
 		}
 	}
 	f.Close()
-
+	c.print()
+	// fmt.Printf("after loading, data: %+v", c.data)
+	// fmt.Printf("bounds: %+v", c.bounds)
 	return
 }
 
 func (c *capsV3) Apply(kind CapType) (err error) {
+	fmt.Println("Apply Enter")
 	if kind&BOUNDS == BOUNDS {
+		fmt.Println("kind&BOUNDS == BOUNDS")
 		var data [2]capData
 		err = capget(&c.hdr, &data[0])
+		fmt.Printf("data [0]'s effective: %s\n", strconv.FormatInt(int64(data[0].effective), 16))
+		fmt.Printf("data [0]'s permitted: %s\n", strconv.FormatInt(int64(data[0].permitted), 16))
+		fmt.Printf("data [0]'s inheritable: %s\n", strconv.FormatInt(int64(data[0].inheritable), 16))
+
 		if err != nil {
 			return
 		}
 		if (1<<uint(CAP_SETPCAP))&data[0].effective != 0 {
+			fmt.Println("1<<uint(CAP_SETPCAP))&data[0].effective != 0")
 			for i := Cap(0); i <= CAP_LAST_CAP; i++ {
 				if c.Get(BOUNDING, i) {
+					fmt.Println("c.Get(BOUNDING, i)")
 					continue
 				}
 				err = prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0)
+				fmt.Println("err = prctl(syscall.PR_CAPBSET_DROP, uintptr(i), 0, 0, 0)")
 				if err != nil {
 					// Ignore EINVAL since the capability may not be supported in this system.
 					if errno, ok := err.(syscall.Errno); ok && errno == syscall.EINVAL {
+						fmt.Printf("err : %s", err.Error())
 						err = nil
 						continue
 					}
@@ -444,9 +497,10 @@ func (c *capsV3) Apply(kind CapType) (err error) {
 	}
 
 	if kind&CAPS == CAPS {
+		fmt.Println("kind&CAPS == CAPS")
 		return capset(&c.hdr, &c.data[0])
 	}
-
+	fmt.Println("Apply End")
 	return
 }
 
