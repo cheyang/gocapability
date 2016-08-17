@@ -21,8 +21,8 @@ var (
 )
 
 func init() {
-	flag.StringVar(&container, "name", "abc", "The name of container")
-	flag.StringVar(&capStr, "cap-add", "NET_ADMIN,SYS_ADMIN", "Capablities separated by comma.")
+	flag.StringVar(&container, "name", "", "The name of container")
+	flag.StringVar(&capStr, "cap-add", "", "Capablities separated by comma, like NET_ADMIN,SYS_ADMIN")
 	flag.IntVar(&pid, "pid", 0, "The process id")
 	initCapMap()
 }
