@@ -96,6 +96,13 @@ func getPidFromContainer(name string) (pid int, err error) {
 func addCaps(pid int, caps []string) error {
 	l := []capability.Cap{}
 	for _, c := range caps {
+
+		c = strings.ToUpper(c)
+
+		if !strings.HasPrefix(c, "CAP_") {
+			c = strings.Join([]string{"CAP_", c}, "")
+		}
+
 		v, ok := capabilityMap[c]
 		if !ok {
 			return fmt.Errorf("unknown capability %q", c)
@@ -134,5 +141,5 @@ func initCapMap() {
 		capabilityMap[capKey] = cap
 	}
 
-	fmt.Println(capabilityMap)
+	// fmt.Println(capabilityMap)
 }
