@@ -49,7 +49,12 @@ func main() {
 
 	caps := strings.Split(capStr, ",")
 
-	addCaps(pid, caps)
+	err = addCaps(pid, caps)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 }
 
 func validate() error {
