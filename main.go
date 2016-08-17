@@ -23,14 +23,16 @@ var (
 func init() {
 	flag.StringVar(&container, "name", "abc", "The name of container")
 	flag.StringVar(&capStr, "cap-add", "NET_ADMIN,SYS_ADMIN", "Capablities separated by comma.")
-	flag.IntVar(&pid, "pid", "12345", "The process id")
+	flag.IntVar(&pid, "pid", 0, "The process id")
 	initCapMap()
 }
 
 func main() {
 	flag.Parse()
 
-	if err := validate(); err != nil {
+	var err error
+
+	if err = validate(); err != nil {
 		fmt.Println(err.Error())
 		flag.Usage()
 		return
@@ -62,10 +64,16 @@ func validate() error {
 	if pid > 0 && container != "" {
 		return fmt.Errorf("Please set one of the container name and pid.")
 	}
+
+	return nil
 }
 
 func getPidFromContainer(name string) (pid int, err error) {
-	client := docker.NewClient(LocalDockerEndpoint)
+	client, err := docker.NewClient(localDockerEndpoint)
+
+	if err != nil {
+		return pid, err
+	}
 
 	container, err := client.InspectContainer(name)
 
@@ -80,24 +88,30 @@ func getPidFromContainer(name string) (pid int, err error) {
 	return pid, nil
 }
 
-func addCaps(pid int, caps []string) {
+func addCaps(pid int, caps []string) error {
 	l := []capability.Cap{}
 	for _, c := range caps {
 		v, ok := capabilityMap[c]
 		if !ok {
-			return nil, fmt.Errorf("unknown capability %q", c)
+			return fmt.Errorf("unknown capability %q", c)
 		}
 		l = append(l, v)
 	}
 	process, err := capability.NewPid(pid)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	process.Clear(allCapabilityTypes)
-	process.Set(allCapabilityTypes, l)
-	// pid.Set(which, ...)
-	process.Apply(allCapabilityTypes)
+	fmt.Println(process.String())
+	fmt.Println(process.StringCap(allCapabilityTypes))
+	// process.
+
+	// process.Clear(allCapabilityTypes)
+	// process.Set(allCapabilityTypes, l)
+	// // pid.Set(which, ...)
+	// process.Apply(allCapabilityTypes)
+
+	return nil
 }
 
 func initCapMap() {
